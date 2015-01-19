@@ -1,0 +1,20 @@
+{
+    "name": "base/di",
+    "description": "Dependency Injection Container",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ecoreng",
+            "email": "me@ecor.me"
+        }
+    ],
+    "require": {
+        "orno/cache": "~1.0",
+        "container-interop/container-interop": "~1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Base\\" : "src/"
+        }
+    }
+}
