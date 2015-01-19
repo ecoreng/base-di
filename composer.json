@@ -1,5 +1,5 @@
 {
-    "name": "base/di",
+    "name": "basephp/di",
     "description": "Dependency Injection Container",
     "license": "MIT",
     "authors": [
