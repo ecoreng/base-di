@@ -240,4 +240,17 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $obj1 = $this->di->get('Foo\Bar');
         $this->assertEquals('woo', $obj1);
     }
+    
+    public function testInterfaceReferenceObjectObjectIsSpecial()
+    {
+        $to = 'Base\Test\Objects\TestNonDefinedObject';
+        $this->di->set('Some\Interface', $to);
+        
+        $obj1 = new \Base\Test\Objects\TestObject;
+        $this->di->set($to, $obj1);
+        
+        $obj2 = $this->di->get('Some\Interface');
+        
+        $this->assertSame($obj1, $obj2);
+    }
 }

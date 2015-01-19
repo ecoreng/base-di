@@ -5,6 +5,9 @@ namespace Base\Concrete;
 use Interop\Container\ContainerInterface;
 use Base\Exception\DependencyNotFoundException as NotFound;
 use Base\Exception\ContainerException;
+use Base\Interfaces\DiResolver as ResolverInterface;
+use Base\Concrete\Di\Resolver;
+use Base\ServiceRegisterer as Services;
 
 class Container implements ContainerInterface
 {
@@ -13,12 +16,12 @@ class Container implements ContainerInterface
     protected $definitions = [];
     protected $instances = [];
 
-    public function __construct(\Base\Interfaces\DiResolver $resolver = null)
+    public function __construct(ResolverInterface $resolver = null)
     {
-        $this->resolver = $resolver === null ? new \Base\Concrete\Di\Resolver : $resolver;
+        $this->resolver = $resolver === null ? new Resolver : $resolver;
     }
-    
-    public function register(\Base\ServiceRegisterer $registerer)
+
+    public function register(Services $registerer)
     {
         $registerer->register($this);
     }
@@ -49,7 +52,7 @@ class Container implements ContainerInterface
         return isset($this->definitions[$name]) ? true : false;
     }
 
-    protected function hasReturn($name)
+    protected function hasAndReturn($name)
     {
         return $this->has($name) ? $this->definitions[$name] : false;
     }
@@ -66,7 +69,7 @@ class Container implements ContainerInterface
         if (isset($this->instances[$name])) {
             return $this->instances[$name];
         }
-        $entry = $this->hasReturn($name);
+        $entry = $this->hasAndReturn($name);
         if ($entry) {
             $instance = $this->resolve($entry);
 
@@ -89,9 +92,15 @@ class Container implements ContainerInterface
 
     protected function resolve(Di\Definition $entry)
     {
-
         $implementation = $entry->getImplementation();
         if (is_string($implementation)) {
+            if ($entry->getAlias() !== $implementation) {
+                $impEntry = $this->hasAndReturn($implementation);
+                if ($impEntry) {
+                    return $this->resolve($impEntry);
+                }
+            }
+
             if (class_exists($implementation)) {
                 return $this->instantiateProperly($entry);
             }
