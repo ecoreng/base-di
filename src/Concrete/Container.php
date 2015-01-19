@@ -17,6 +17,11 @@ class Container implements ContainerInterface
     {
         $this->resolver = $resolver === null ? new \Base\Concrete\Di\Resolver : $resolver;
     }
+    
+    public function register(\Base\ServiceRegisterer $registerer)
+    {
+        $registerer->register($this);
+    }
 
     public function set($alias, $implementation = null, array $arguments = [], $singleton = true)
     {

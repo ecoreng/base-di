@@ -233,4 +233,11 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(16, $obj->getId());
         $this->assertEquals(15, $obj->getId2());
     }
+    
+    public function testServiceRegistrationClass()
+    {
+        $this->di->register(new \Base\Test\Objects\TestServiceRegisterer);
+        $obj1 = $this->di->get('Foo\Bar');
+        $this->assertEquals('woo', $obj1);
+    }
 }
