@@ -15,6 +15,7 @@ class Container implements ContainerInterface
     protected $resolver;
     protected $definitions = [];
     protected $instances = [];
+    protected $ignore = ['array', 'callable'];
 
     public function __construct(ResolverInterface $resolver = null)
     {
@@ -117,7 +118,7 @@ class Container implements ContainerInterface
         if (is_object($implementation)) {
             $implementation = get_class($implementation);
         }
-        throw new ContainerException($implementation . ' is unresolvable');
+        throw new ContainerException($implementation . ' is unresolvable @ ' . $entry->getAlias());
     }
 
     protected function instantiateProperly(Di\Definition $entry)
@@ -158,24 +159,21 @@ class Container implements ContainerInterface
         foreach ($arguments as $name => $argument) {
 
             // argument was not defined but looks like it's typehinted
-            if (is_array($argument)) {
+            if (is_array($argument) && (array_key_exists('argDefault', $argument) || array_key_exists('argClass', $argument))) {
                 if (isset($argument['argClass'])) {
-
                     // is typehinted
                     if ($argument['argClass'] !== null) {
 
                         // create a chain where we can check if this is cyclic =========================================
-
                         $ret[$name] = $this->get($argument['argClass']);
 
-                        // check if there is a default value and use it
-                    } else {
-                        if (isset($argument['argDefault'])) {
+                        if (isset($argument['argDefault']) && $ret[$name] === null) {
                             $ret[$name] = $argument['argDefault'];
                         }
                     }
+                } else {
+                    $ret[$name] = $argument['argDefault'];
                 }
-
                 // argument is a string
             } elseif (is_string($argument)) {
 

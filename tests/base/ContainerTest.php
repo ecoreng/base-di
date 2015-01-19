@@ -253,4 +253,12 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         
         $this->assertSame($obj1, $obj2);
     }
+    
+    public function testConstructorWithSpecialArgs()
+    {
+        $to = 'Base\Test\Objects\TestObjectDependenciesSpecial';
+        $this->di->set($to)->withArgument('bar', ['one' => 1]);
+        $obj1 = $this->di->get($to);
+        var_dump($obj1);
+    }
 }
