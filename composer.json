@@ -9,7 +9,6 @@
         }
     ],
     "require": {
-        "orno/cache": "~1.0",
         "container-interop/container-interop": "~1.1"
     },
     "autoload": {
