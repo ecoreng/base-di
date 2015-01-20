@@ -10,5 +10,6 @@ interface DiResolver
     public function getReflectionClass($name);
     public function getReflectionMethod($instance, $method);
     public function getConstructorArgs(\Base\Concrete\Di\Definition $entry);
-    public function getSetterArgs($alias, $instance, $setter);
+    public function getMethodArgs($alias, $instance, $setter);
+    //public function getFunctionArgs();
 }

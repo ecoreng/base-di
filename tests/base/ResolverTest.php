@@ -60,10 +60,10 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(null, $ctorArgs['foo2']['argDefault']);
     }
     
-    public function testGetSetterArgs()
+    public function testGetMethodArgs()
     {
         $to = new Objects\TestObjectSetters;
-        $strArgs = $this->resolver->getSetterArgs('foo', $to, 'setId2');
+        $strArgs = $this->resolver->getMethodArgs('foo', $to, 'setId2');
         $this->assertEquals(true, array_key_exists('id2', $strArgs));
     }
 

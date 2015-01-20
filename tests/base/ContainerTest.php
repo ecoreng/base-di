@@ -201,64 +201,83 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
     {
 
         $this->di->set('Some\Interface', $this->testObject)
-            ->setSingleton(false);
-        
+                ->setSingleton(false);
+
         $this->di->set($this->testObject)
-            ->setSingleton(false);
-        
+                ->setSingleton(false);
+
         $obj1 = $this->di->get('Some\Interface');
         $obj2 = $this->di->get($this->testObject);
         $this->assertNotSame($obj1, $obj2);
     }
-    
+
     public function testSetters()
     {
         $to = 'Base\Test\Objects\TestObjectSetters';
         $this->di->set('Some\Interface', $to)
-            ->withSetter('setId', ['id' => 10])
-            ->withSetter('setId2', ['id2' => 20]);
+                ->withSetter('setId', ['id' => 10])
+                ->withSetter('setId2', ['id2' => 20]);
         $obj = $this->di->get('Some\Interface');
         $this->assertInstanceOf($to, $obj);
         $this->assertEquals(10, $obj->getId());
         $this->assertEquals(20, $obj->getId2());
     }
-    
+
     public function testSettersUnorderedParams()
     {
         $to = 'Base\Test\Objects\TestObjectSetters';
         $this->di->set('Some\Interface', $to)
-            ->withSetter('setIds', ['id' => 16, 'id2' => 15]);
+                ->withSetter('setIds', ['id' => 16, 'id2' => 15]);
         $obj = $this->di->get('Some\Interface');
         $this->assertInstanceOf($to, $obj);
         $this->assertEquals(16, $obj->getId());
         $this->assertEquals(15, $obj->getId2());
     }
-    
+
     public function testServiceRegistrationClass()
     {
         $this->di->register(new \Base\Test\Objects\TestServiceRegisterer);
         $obj1 = $this->di->get('Foo\Bar');
         $this->assertEquals('woo', $obj1);
     }
-    
+
     public function testInterfaceReferenceObjectObjectIsSpecial()
     {
         $to = 'Base\Test\Objects\TestNonDefinedObject';
         $this->di->set('Some\Interface', $to);
-        
+
         $obj1 = new \Base\Test\Objects\TestObject;
         $this->di->set($to, $obj1);
-        
+
         $obj2 = $this->di->get('Some\Interface');
-        
+
         $this->assertSame($obj1, $obj2);
     }
-    
+
     public function testConstructorWithSpecialArgs()
     {
         $to = 'Base\Test\Objects\TestObjectDependenciesSpecial';
         $this->di->set($to)->withArgument('bar', ['one' => 1]);
         $obj1 = $this->di->get($to);
-        var_dump($obj1);
+        $this->assertInstanceOf($to, $obj1);
     }
+
+    public function testExecutableFromCallableArray()
+    {
+        $to = 'Base\Test\Objects\TestObjectMethod';
+        $toArray = [new $to, 'setIds'];
+        $exe = $this->di->getExecutableFromCallable($to, $toArray, ['id' => 405]);
+        $this->assertEquals('success', $exe());
+    }
+
+    public function testExecutableFromClosure()
+    {
+        $to = function (\Base\Test\Objects\TestObject $tobj, $id) {
+            return 'success' . $id;
+        };
+        $key = is_object($to) ? spl_object_hash($to) : $to;
+        $exe = $this->di->getExecutableFromCallable($key, $to, ['id' => 21]);
+        $this->assertEquals('success21', $exe());
+    }
+
 }

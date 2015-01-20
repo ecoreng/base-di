@@ -91,6 +91,29 @@ class Container implements ContainerInterface
         throw new NotFound($name . ' is not defined');
     }
 
+    public function getExecutableFromCallable($handlerName, $handler, $args)
+    {
+        if (is_array($handler)) {
+            // resolve the controller parameters
+            $instance = $handler[0];
+            $method = $handler[1];
+            $params = $this->resolver->getMethodArgs($handlerName, $handler[0], $handler[1]);
+            $ref = $this->resolver->getReflectionMethod($instance, $method);
+            $argsReady = $this->prepareArgs(array_merge($params, $args));
+            return function() use ($ref, $instance, $argsReady) {
+                return $ref->invokeArgs($instance, $argsReady);
+            };
+        } else {
+            // resolve the closure / function parameters
+            $params = $this->resolver->getFunctionArgs($handler, $handlerName);
+            $ref = $this->resolver->getReflectionFunction($handler, $handlerName);
+            $argsReady = $this->prepareArgs(array_merge($params, $args));
+            return function() use ($ref, $argsReady) {
+                return $ref->invokeArgs($argsReady);
+            };
+        }
+    }
+
     protected function resolve(Di\Definition $entry)
     {
         $implementation = $entry->getImplementation();
@@ -140,7 +163,7 @@ class Container implements ContainerInterface
         $setters = $entry->getSetters();
         if (count($setters) > 0) {
             foreach ($setters as $setter => $params) {
-                $strArgs = $this->resolver->getSetterArgs($entry->getAlias(), $instance, $setter);
+                $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
                 $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
                 $name = $entry->getAlias();
                 $key = $name . ':' . $setter;

@@ -29,6 +29,16 @@ class Resolver implements \Base\Interfaces\DiResolver
         return $rClass;
     }
 
+    public function getReflectionFunction($func, $key)
+    {
+        $ref = $this->getData('reflectionFunction', $key);
+        if ($ref !== null) {
+            return $ref;
+        }
+        $this->definitions[$key]['reflectionMethod'] = $rFunc = new \ReflectionFunction($func);
+        return $rFunc;
+    }
+
     public function getReflectionMethod($instance, $method)
     {
         $ref = $this->getData('reflectionMethod', $method);
@@ -57,17 +67,30 @@ class Resolver implements \Base\Interfaces\DiResolver
         return $ret;
     }
 
-    public function getSetterArgs($alias, $instance, $setter)
+    public function getMethodArgs($alias, $instance, $method)
     {
         $ret = [];
-        $key = $alias . ':' . $setter;
-        $args = $this->storage->get($key, 'setterArguments');
+        $key = $alias . ':' . $method;
+        $args = $this->storage->get($key, 'methodArguments');
         if ($args !== null) {
             return $args;
         }
         $rSetter = $this->getReflectionMethod($instance, $key);
         $ret = $this->getArgsFromReflection($rSetter);
-        $this->storage->set($alias, 'setterArguments', $ret);
+        $this->storage->set($alias, 'methodArguments', $ret);
+        return $ret;
+    }
+
+    public function getFunctionArgs($func, $key)
+    {
+        $ret = [];
+        $args = $this->storage->get($key, 'functionArguments');
+        if ($args !== null) {
+            return $args;
+        }
+        $rFunc = $this->getReflectionFunction($func, $key);
+        $ret = $this->getArgsFromReflection($rFunc);
+        $this->storage->set($key, 'functionArguments', $ret);
         return $ret;
     }
 
