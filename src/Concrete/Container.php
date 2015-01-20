@@ -114,6 +114,26 @@ class Container implements ContainerInterface
         }
     }
 
+    public function setterInjectAs($alias, $instance)
+    {
+        $entry = $this->hasAndReturn($alias);
+        $implementation = $entry->getImplementation();
+        if ($entry) {
+            // prepare
+            $setters = $entry->getSetters();
+            if (count($setters) > 0) {
+                foreach ($setters as $setter => $params) {
+                    $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
+                    $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
+                    $name = $entry->getAlias();
+                    $key = $name . ':' . $setter;
+                    $r = $this->resolver->getReflectionMethod($implementation, $key);
+                    $r->invokeArgs($instance, $strArgs);
+                }
+            }
+        }
+    }
+
     protected function mergeArgs($resolved, $passed)
     {
         $numeric = false;
@@ -133,7 +153,7 @@ class Container implements ContainerInterface
         }
         return $merged;
     }
-    
+
     protected function resolve(Di\Definition $entry)
     {
         $implementation = $entry->getImplementation();
@@ -179,19 +199,8 @@ class Container implements ContainerInterface
             $instance = $r->newInstanceArgs($ctorArgs);
         }
 
-        // prepare
-        $setters = $entry->getSetters();
-        if (count($setters) > 0) {
-            foreach ($setters as $setter => $params) {
-                $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
-                $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
-                $name = $entry->getAlias();
-                $key = $name . ':' . $setter;
-                $r = $this->resolver->getReflectionMethod($implementation, $key);
-                $r->invokeArgs($instance, $strArgs);
-            }
-        }
-
+        $this->setterInjectAs($entry->getAlias(), $instance);
+        
         // return
         return $instance;
     }

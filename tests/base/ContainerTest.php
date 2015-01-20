@@ -290,4 +290,27 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('success21', $exe());
     }
 
+    public function testReplaceDefinition()
+    {
+        $to1 = 'Base\Test\Objects\TestObject';
+        $to2 = 'Base\Test\Objects\TestNonDefinedObject';
+        
+        $this->di->set('Some\Interface', $to1);
+        $this->di->set('Some\Interface', $to2);
+        
+        $obj1 = $this->di->get('Some\Interface');
+        $this->assertInstanceOf($to2, $obj1);
+    }
+    
+    public function testSetterInjectAs()
+    {
+        $to = 'Base\Test\Objects\TestObjectSetters';
+        $this->di->set('Some\Interface', $to)
+                ->withSetter('setIds', ['id2' => 26, 'id' => 1001]);
+        $toInstance = new $to;
+        $this->di->setterInjectAs('Some\Interface', $toInstance);
+        $this->assertEquals(26, $toInstance->getId2());
+        $this->assertEquals(1001, $toInstance->getId());
+        
+    }
 }
