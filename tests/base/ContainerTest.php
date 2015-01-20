@@ -279,5 +279,15 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $exe = $this->di->getExecutableFromCallable($key, $to, ['id' => 21]);
         $this->assertEquals('success21', $exe());
     }
+    
+    public function testExecutableFromClosureMixedArgs()
+    {
+        $to = function (\Base\Test\Objects\TestObject $tobj, $id) {
+            return 'success' . $id;
+        };
+        $key = is_object($to) ? spl_object_hash($to) : $to;
+        $exe = $this->di->getExecutableFromCallable($key, $to, [null, 21]);
+        $this->assertEquals('success21', $exe());
+    }
 
 }

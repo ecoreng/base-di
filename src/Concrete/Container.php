@@ -99,7 +99,7 @@ class Container implements ContainerInterface
             $method = $handler[1];
             $params = $this->resolver->getMethodArgs($handlerName, $handler[0], $handler[1]);
             $ref = $this->resolver->getReflectionMethod($instance, $method);
-            $argsReady = $this->prepareArgs(array_merge($params, $args));
+            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
             return function() use ($ref, $instance, $argsReady) {
                 return $ref->invokeArgs($instance, $argsReady);
             };
@@ -107,13 +107,33 @@ class Container implements ContainerInterface
             // resolve the closure / function parameters
             $params = $this->resolver->getFunctionArgs($handler, $handlerName);
             $ref = $this->resolver->getReflectionFunction($handler, $handlerName);
-            $argsReady = $this->prepareArgs(array_merge($params, $args));
+            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
             return function() use ($ref, $argsReady) {
                 return $ref->invokeArgs($argsReady);
             };
         }
     }
 
+    protected function mergeArgs($resolved, $passed)
+    {
+        $numeric = false;
+        $merged = [];
+        if (is_numeric(key($passed))) {
+            foreach ($passed as $arg) {
+                $argRes = each($resolved);
+                if ($arg === null) {
+                    $merged[$argRes['key']] = $argRes['value'];
+                    continue;
+                }
+                $merged[$argRes['key']] = $arg;
+            }
+        }
+        if (count($merged) === 0) {
+            $merged = array_merge($resolved, $passed);
+        }
+        return $merged;
+    }
+    
     protected function resolve(Di\Definition $entry)
     {
         $implementation = $entry->getImplementation();
