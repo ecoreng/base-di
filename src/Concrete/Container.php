@@ -139,18 +139,17 @@ class Container implements ContainerInterface
         $numeric = false;
         $merged = [];
         if (is_numeric(key($passed))) {
-            foreach ($passed as $arg) {
+            foreach ($passed as $key => $arg) {
                 $argRes = each($resolved);
                 if ($arg === null) {
                     $merged[$argRes['key']] = $argRes['value'];
                     continue;
                 }
                 $merged[$argRes['key']] = $arg;
+                unset($passed[$key]);
             }
         }
-        if (count($merged) === 0) {
-            $merged = array_merge($resolved, $passed);
-        }
+        $merged = array_merge($resolved, $merged, $passed);
         return $merged;
     }
 
@@ -200,7 +199,7 @@ class Container implements ContainerInterface
         }
 
         $this->setterInjectAs($entry->getAlias(), $instance);
-        
+
         // return
         return $instance;
     }

@@ -272,7 +272,7 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
 
     public function testExecutableFromClosure()
     {
-        $to = function (\Base\Test\Objects\TestObject $tobj, $id) {
+        $to = function ($id, \Base\Test\Objects\TestObject $tobj) {
             return 'success' . $id;
         };
         $key = is_object($to) ? spl_object_hash($to) : $to;
