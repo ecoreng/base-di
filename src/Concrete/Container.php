@@ -16,6 +16,7 @@ class Container implements ContainerInterface
     protected $definitions = [];
     protected $instances = [];
     protected $ignore = ['array', 'callable'];
+    protected $tempArgs = [];
 
     public function __construct(ResolverInterface $resolver = null)
     {
@@ -65,6 +66,12 @@ class Container implements ContainerInterface
         }
     }
 
+    public function setArgs(array $args)
+    {
+        $this->tempArgs = $args;
+        return $this;
+    }
+    
     public function get($name)
     {
         if (isset($this->instances[$name])) {
@@ -134,6 +141,13 @@ class Container implements ContainerInterface
         }
     }
 
+    protected function tempArgs()
+    {
+        $args = $this->tempArgs;
+        $this->tempArgs = [];
+        return $args;
+    }
+    
     protected function mergeArgs($resolved, $passed)
     {
         $numeric = false;
@@ -193,7 +207,7 @@ class Container implements ContainerInterface
         if (count($ctorArgs) === 0) {
             $instance = new $implementation;
         } else {
-            $ctorArgs = $this->prepareArgs(array_merge($ctorArgs, $entry->getArguments()));
+            $ctorArgs = $this->prepareArgs(array_merge($ctorArgs, $entry->getArguments(), $this->tempArgs()));
             $r = $this->resolver->getReflectionClass($implementation);
             $instance = $r->newInstanceArgs($ctorArgs);
         }

@@ -279,7 +279,7 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $exe = $this->di->getExecutableFromCallable($key, $to, ['id' => 21]);
         $this->assertEquals('success21', $exe());
     }
-    
+
     public function testExecutableFromClosureMixedArgs()
     {
         $to = function (\Base\Test\Objects\TestObject $tobj, $id) {
@@ -294,14 +294,14 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
     {
         $to1 = 'Base\Test\Objects\TestObject';
         $to2 = 'Base\Test\Objects\TestNonDefinedObject';
-        
+
         $this->di->set('Some\Interface', $to1);
         $this->di->set('Some\Interface', $to2);
-        
+
         $obj1 = $this->di->get('Some\Interface');
         $this->assertInstanceOf($to2, $obj1);
     }
-    
+
     public function testSetterInjectAs()
     {
         $to = 'Base\Test\Objects\TestObjectSetters';
@@ -311,6 +311,16 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->di->setterInjectAs('Some\Interface', $toInstance);
         $this->assertEquals(26, $toInstance->getId2());
         $this->assertEquals(1001, $toInstance->getId());
-        
     }
+
+    public function testGetWithParameters()
+    {
+        $dep = $this->di->get('\Base\Test\Objects\TestObject');
+        $dep->id = 2036;
+        $obj1 = $this->di->setArgs(['foo' => $dep])->get($this->testObjectDependencies);
+        $this->assertInstanceOf('\Base\Test\Objects\TestObjectDependencies', $obj1);
+        $this->assertInstanceOf('\Base\Test\Objects\TestObject', $obj1->foo);
+        $this->assertEquals(2036, $obj1->foo->id);
+    }
+
 }
