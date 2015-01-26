@@ -6,7 +6,7 @@ class Definition implements \Base\Interfaces\DiDefinition
 {
 
     protected $definition;
-    
+
     public function __construct(array $definition)
     {
         $this->definition = $definition;
@@ -73,18 +73,22 @@ class Definition implements \Base\Interfaces\DiDefinition
 
     public function withSetter($setter, array $arguments)
     {
+        if (!isset($this->definition['setters'][$setter])) {
+            $callNo = 0;
+            $this->definition['setters'][$setter] = [0 => []];
+        } else {
+            $callNo = count($this->definition['setters'][$setter]);
+        }
+
         foreach ($arguments as $name => $argument) {
-            $this->addSetterArgument($setter, $name, $argument);
+            $this->addSetterArgument($setter, $callNo, $name, $argument);
         }
         return $this;
     }
 
-    protected function addSetterArgument($setter, $name, $argument)
+    protected function addSetterArgument($setter, $callNo, $name, $argument)
     {
-        if (!isset($this->definition['setters'][$setter])) {
-            $this->definition['setters'][$setter] = [];
-        }
-        $this->definition['setters'][$setter][$name] = $argument;
+        $this->definition['setters'][$setter][$callNo][$name] = $argument;
         return $this;
     }
 

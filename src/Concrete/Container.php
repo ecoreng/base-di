@@ -71,7 +71,7 @@ class Container implements ContainerInterface
         $this->tempArgs = $args;
         return $this;
     }
-    
+
     public function get($name)
     {
         if (isset($this->instances[$name])) {
@@ -129,13 +129,15 @@ class Container implements ContainerInterface
             // prepare
             $setters = $entry->getSetters();
             if (count($setters) > 0) {
-                foreach ($setters as $setter => $params) {
-                    $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
-                    $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
-                    $name = $entry->getAlias();
-                    $key = $name . ':' . $setter;
-                    $r = $this->resolver->getReflectionMethod($implementation, $key);
-                    $r->invokeArgs($instance, $strArgs);
+                foreach ($setters as $setter => $calls) {
+                    foreach ($calls as $params) {
+                        $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
+                        $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
+                        $name = $entry->getAlias();
+                        $key = $name . ':' . $setter;
+                        $r = $this->resolver->getReflectionMethod($implementation, $key);
+                        $r->invokeArgs($instance, $strArgs);
+                    }
                 }
             }
         }
@@ -147,7 +149,7 @@ class Container implements ContainerInterface
         $this->tempArgs = [];
         return $args;
     }
-    
+
     protected function mergeArgs($resolved, $passed)
     {
         $numeric = false;

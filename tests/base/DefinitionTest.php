@@ -14,7 +14,7 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
             'arguments' => ['one' => 'yes'],
             'implementation' => 'bar',
             'singleton' => false,
-            'setters' => ['moo' => ['cow' => 'one'], 'woof' => ['dog' => 'two']]
+            'setters' => ['moo' => [['cow' => 'one']], 'woof' => [['dog' => 'two']]]
         ]);
     }
 
@@ -56,8 +56,8 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
     {
         $str = $this->definition->getSetter('moo');
         $this->assertEquals(true, is_array($str));
-        $this->assertEquals(true, array_key_exists('cow', $str));
-        $this->assertEquals('one', $str['cow']);
+        $this->assertEquals(true, array_key_exists('cow', reset($str)));
+        $this->assertEquals('one', $str[0]['cow']);
     }
 
     public function testGetSetters()
@@ -66,10 +66,10 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals(true, is_array($strs));
         $this->assertEquals(true, array_key_exists('moo', $strs));
-        $this->assertEquals('one', $strs['moo']['cow']);
+        $this->assertEquals('one', $strs['moo'][0]['cow']);
 
         $this->assertEquals(true, array_key_exists('woof', $strs));
-        $this->assertEquals('two', $strs['woof']['dog']);
+        $this->assertEquals('two', $strs['woof'][0]['dog']);
     }
 
     public function testWithArgument()
@@ -98,15 +98,26 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(true, array_key_exists('moo', $strs));
         $this->assertEquals(true, array_key_exists('woof', $strs));
         
-        $this->assertEquals(true, array_key_exists('something', $strs['test']));
-        $this->assertEquals(true, array_key_exists('woo', $strs['test']));
-        $this->assertEquals(true, array_key_exists('cow', $strs['moo']));
-        $this->assertEquals(true, array_key_exists('dog', $strs['woof']));
+        $this->assertEquals(true, array_key_exists('something', reset($strs['test'])));
+        $this->assertEquals(true, array_key_exists('woo', reset($strs['test'])));
+        $this->assertEquals(true, array_key_exists('cow', reset($strs['moo'])));
+        $this->assertEquals(true, array_key_exists('dog', reset($strs['woof'])));
         
-        $this->assertEquals('one', $strs['moo']['cow']);
-        $this->assertEquals('two', $strs['woof']['dog']);
+        $this->assertEquals('one', $strs['moo'][0]['cow']);
+        $this->assertEquals('two', $strs['woof'][0]['dog']);
         
-        $this->assertEquals('val', $strs['test']['something']);
-        $this->assertEquals('meh', $strs['test']['woo']);
+        $this->assertEquals('val', $strs['test'][0]['something']);
+        $this->assertEquals('meh', $strs['test'][0]['woo']);
+    }
+    
+    public function testMultiSetters()
+    {
+        $this->definition->withSetter('test', ['something' => 'val1']);
+        $this->definition->withSetter('test', ['something' => 'val2']);
+        $strs = $this->definition->getSetters();
+        
+        $this->assertEquals(2, count($strs['test']));
+        $this->assertEquals('val1', $strs['test'][0]['something']);
+        $this->assertEquals('val2', $strs['test'][1]['something']);
     }
 }
