@@ -38,7 +38,10 @@ class Container implements ContainerInterface
             'singleton' => $singleton,
             'setters' => []
         ]);
-
+        // remove previous cached instances of this object
+        if (isset($this->instances[$alias])) {
+            unset($this->instances[$alias]);
+        }
         return $this->definitions[$alias];
     }
 

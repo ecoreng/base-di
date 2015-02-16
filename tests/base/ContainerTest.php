@@ -323,4 +323,22 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(2036, $obj1->foo->id);
     }
 
+    public function testDefinitionAfterInstance()
+    {
+        // get a defined dependency
+        $dep = $this->di->get('\Base\Test\Objects\TestObject');
+        
+        // create a new instance, but different object
+        $dep = clone($dep);
+        // mutate it
+        $dep->id = 1234;
+        // define it in our container
+        $this->di->set('\Base\Test\Objects\TestObject', $dep);
+        
+        // get newly defined object
+        $dep2 = $this->di->get('\Base\Test\Objects\TestObject');
+        
+        // should be the same as the later (mutated) object
+        $this->assertSame($dep, $dep2);
+    }
 }
