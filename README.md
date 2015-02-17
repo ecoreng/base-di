@@ -9,7 +9,9 @@ This library implements the "Container Interoperability" interface
 
 Read More:
 https://github.com/container-interop/container-interop
+
 Packagist: "container-interop/container-interop"
+
 
 
 Inspired by orno/di now thephpleague/container and rdlowrey\auryn
@@ -17,14 +19,14 @@ Inspired by orno/di now thephpleague/container and rdlowrey\auryn
 ##Basic Usage##
 
 Set and get a dependency
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object');
 $obj = $this->get('Some\Object');
 ```
 
 Define an interface and an implementation
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Interface', 'Some\Object');
 $obj = $this->get('Some\Interface');
@@ -34,7 +36,7 @@ $obj = $this->get('Some\Interface');
 
 Requesting the interface returns the same object as if we request the
 object directly
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Interface', 'Some\Object');
 $obj = $this->get('Some\Interface');
@@ -46,7 +48,7 @@ $obj2 = $this->get('Some\Object');
 ```
 
 Unless you set them not to:
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Interface', 'Some\Object')->setSingleton(false);;
 $obj = $this->get('Some\Interface');
@@ -58,7 +60,7 @@ $obj2 = $this->get('Some\Object');
 ```
 
 Interfaces are the suggested alias/implementation for classes, as these will help autoresolve (more on this later) your parameter dependencies to Interfaces, but actually anything will work:
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('somestring-not-a-class-or-interface', 'Some\Object');
 $obj = $this->get('somestring-not-a-class-or-interface');
@@ -67,7 +69,7 @@ $obj = $this->get('somestring-not-a-class-or-interface');
 ```
 
 All objects are saved in memory and are returned when requested again
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object');
 $obj1 = $di->get('Some\Object');
@@ -77,7 +79,7 @@ $obj2 = $di->get('Some\Object');
 ```
 
 If this is unwanted behavior, then pass a ``false`` as 3rd param when defining
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object', null, false);
 $obj1 = $di->get('Some\Object');
@@ -85,9 +87,19 @@ $obj2 = $di->get('Some\Object');
 
 // $obj1 and $obj2 reference different instances
 ```
+OR
+```php
+$di = new \Base\Concrete\Container;
+$di->set('Some\Object')->setSingleton(false);
+$obj1 = $di->get('Some\Object');
+$obj2 = $di->get('Some\Object');
+
+// $obj1 and $obj2 reference different instances
+```
+
 
 Definitions can be overwritten:
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Interface', 'Some\Object1');
 $di->set('Some\Interface', 'Some\Object2');
@@ -97,20 +109,20 @@ $obj = $this->get('Some\Interface');
 ```
 
 You can delegate the instantiation of the implementation to a Closure for complex instantiation logic
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object', function () {
 	$obj = new \Some\Object;
-  $obj->foo ='bar';
-  return $obj;
+	$obj->foo ='bar';
+	return $obj;
 });
 $obj = $di->get('Some\Object');
 
 // $obj->foo equals 'bar';
 ```
 
-If you need to return a Closure when you request an object just wrap with the method ``raw()``
-```
+If you need to return a Closure when you request an object just wrap it with the method ``raw()``
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Foo\SomeFactory', $di->raw(function () {
 	return rand(1, 100);
@@ -123,7 +135,7 @@ $num2 = $someFactory();
 ```
 
 Or you can define current instances of objects as implementations:
-```
+```php
 $di = new \Base\Concrete\Container;
 
 $obj = new \Some\Object;
@@ -136,7 +148,7 @@ $obj = $di->get('Some\Object');
 ```
 
 Container Definitions can also be reused, just create an object that implements ``Base\ServiceRegisterer``
-```
+```php
 // ServiceRegisterer.php
 class ServiceRegisterer
 {
@@ -159,7 +171,7 @@ When you define something in the container, it returns an instance of an object 
 
 ##Setter Injection##
 You can achieve Setter Injection By using the following syntax
-```
+```php
 // SetterObject.php
 class SetterObject
 {
@@ -190,7 +202,7 @@ $obj = $di->get('SetterObject');
 ```
 
 or instead of the chained call, define a bunch at a time
-```
+```php
 ...
 
 $di = new \Base\Concrete\Container;
@@ -213,7 +225,7 @@ This library implements the "Container Interoperability" interface so the follow
 
 You can check the existence of a definition like this:
 
-```
+```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object');
 $has1 = $di->has('Some\Object2');
@@ -223,8 +235,8 @@ $has2 = $di->has('Some\Object');
 // $has2 equals true
 ```
 
-If a non-existing definition is requested, ``Base\Exception\DependencyNotFoundException`` is thrown (Base\Exception\DependencyNotFoundException extends Interop\Container\Exception\NotFoundException)
-```
+If a non-existing definition is requested, ``Base\Exception\DependencyNotFoundException`` is thrown (``Base\Exception\DependencyNotFoundException`` extends ``Interop\Container\Exception\NotFoundException``)
+```php
 $di = new \Base\Concrete\Container;
 $obj = $di->get('Some\Object2');
 
@@ -233,7 +245,7 @@ $obj = $di->get('Some\Object2');
 
 You can define a delegate lookup container, which will be used to get dependencies instead of this container, as long as it implements the Container Interoperability interface
 
-```
+```php
 $di = new \Base\Concrete\Container;
 
 $newDi = new Awesome\Container;
@@ -251,7 +263,7 @@ $app = $di->get('Some\Namespace\App');
 
 ##Dependency Autoresolution##
 The container will always try to resolve your dependencies, even if you dont define them:
-```
+```php
 // Assuming that \Some\Object exists and is autoloadable
 $di = new \Base\Concrete\Container;
 $obj1 = $di->get('\Some\Object');
@@ -260,7 +272,7 @@ $obj1 = $di->get('\Some\Object');
 ```
 
 The container will try to autoresolve all dependencies that your object has as long as they're typehinted, exist and are autoloadable. This is done through Reflections, and the resulting relevant reflection information saved in memory (or cached)
-```
+```php
 //Dependency1.php
 
 class Dependency1
@@ -292,8 +304,8 @@ $obj1 = $di->get('Dependency1');
 // $obj1->dep2->foo equals 'bar'
 ```
 
-If a default value for a parameter exist, that value will be used, unless you pass parameters to the definition (notice that we dont need to define objects if they exist, and are autoloadable)
-```
+If a default value for a parameter exists, that value will be used, unless you pass parameters to the definition (notice that we dont need to define objects if they exist, and are autoloadable)
+```php
 //Dependency1.php
 
 class Dependency1
@@ -358,7 +370,7 @@ $obj1 = $di->setArgs(['dep2' => '@Dependency2'])->get('Dependency1');
 ##Caching Reflection Data###
 
 By default, the container saves in memory the data it gets from Reflections, but it's also possible to cache this information by passing a preset ``Base\Interfaces\DiResolver`` object with a caching ``Base\Interfaces\DiPoolStorage`` object, currently an APC pool storage is provided.
-```
+```php
 $resolver = new \Base\Concrete\Di\Resolver(new \Base\Concrete\Di\ApcPoolStorage);
 $di = new Base\Concrete\Container($resolver);
 ...
@@ -366,7 +378,7 @@ $di = new Base\Concrete\Container($resolver);
 ```
 
 Creating your own cache driver is as simple as implementing the ``Base\Interfaces\DiPoolStorage`` interface:
-```
+```php
 namespace Base\Interfaces;
 
 interface DiPoolStorage
@@ -379,7 +391,7 @@ interface DiPoolStorage
 
 ##Black Magic##
 Callables can also be autoresolved and returned as a callable for later execution:
-```
+```php
 // assuming \Some\Object and \Some\Object2 exist and are autoloadable
 $di = new \Base\Concrete\Container;
 
@@ -397,8 +409,8 @@ $returnArray = $exec();
 // third element contains an instance of \Some\Object2 (autoresolved)
 ```
 
-Or you can passed an associative array where the order of the params don't matter
-```
+Or you can pass an associative array where the order of the params don't matter
+```php
 // assuming \Some\Object and \Some\Object2 exist and are autoloadable
 $di = new \Base\Concrete\Container;
 
@@ -418,12 +430,12 @@ $returnArray = $exec();
 
 Manually prepare an instantiated Object as another definition (Manual Setter Injection as Interface). This is useful feature for when you want to free people from unnecesary inheritance but still have a way to prepare an object properly.
 
-```
+```php
 // ControllerInterface.php
 interface ControllerInterface
 {
-	public function setView();
-	public function setRequest();
+	public function setView(View $view);
+	public function setRequest(Request $request);
 }
 ====
 // ControllerTrait.php
@@ -450,18 +462,24 @@ class SomeController implements ControllerInterface
 
 $di = new \Base\Concrete\Container;
 $di->set('ControllerInterface')
-	->withSetter('setView', ['view' => '@View'])
-	->withSetter('setRequest', ['request' => '@Request'];
+	->withSetters(
+		[
+			'setView', => ['view' => '@View'],
+			'setRequest', ['request' => '@Request']
+		]
+	);
 
 // resolve userland dependencies
 $ctrl = $di->get('SomeController');
 
 // check if the interface is implemented
 if ($ctrl instanceof 'ControllerInterface') {
+	
+	// prepare the object further
 	$di->setterInjectAs('ControllerInterface', $ctrl);
 }
 
-// $ctrl is ready to be used
+// $ctrl should be ready to be used
 
 ```
 
