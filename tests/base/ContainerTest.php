@@ -199,7 +199,6 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
 
     public function testDefinedImplementationReturnsDifferentInstanceAsNormalDefinitionIfSetToDoSo()
     {
-
         $this->di->set('Some\Interface', $this->testObject)
                 ->setSingleton(false);
 
@@ -221,6 +220,11 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf($to, $obj);
         $this->assertEquals(10, $obj->getId());
         $this->assertEquals(20, $obj->getId2());
+    }
+    
+    public function testSettersAutoresolution()
+    {
+        // same as above with autoresolution
     }
 
     public function testSettersUnorderedParams()
@@ -282,7 +286,7 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
 
     public function testExecutableFromClosureMixedArgs()
     {
-        $to = function (\Base\Test\Objects\TestObject $tobj, $id) {
+        $to = function (\Base\Test\Objects\TestObject $tobj = null, $id) {
             return 'success' . $id;
         };
         $key = is_object($to) ? spl_object_hash($to) : $to;
@@ -290,6 +294,11 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('success21', $exe());
     }
 
+    public function testExecutableFromClosureAutoresolution()
+    {
+        // same as above with autoresolution
+    }
+    
     public function testReplaceDefinition()
     {
         $to1 = 'Base\Test\Objects\TestObject';
@@ -340,5 +349,13 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         
         // should be the same as the later (mutated) object
         $this->assertSame($dep, $dep2);
+    }
+    
+    public function testDelegateContainer()
+    {
+        $newDi = new \Base\Concrete\Container;
+        $newDi->set('Some\Namespace\App', function(){return 'app';});
+        $this->di->setDelegateLookupContainer($newDi);
+        $this->assertEquals('app', $this->di->get('Some\Namespace\App'));
     }
 }

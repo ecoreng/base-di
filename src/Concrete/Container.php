@@ -17,10 +17,17 @@ class Container implements ContainerInterface
     protected $instances = [];
     protected $ignore = ['array', 'callable'];
     protected $tempArgs = [];
+    protected $lookupContainer;
 
     public function __construct(ResolverInterface $resolver = null)
     {
         $this->resolver = $resolver === null ? new Resolver : $resolver;
+        $this->lookupContainer = $this;
+    }
+
+    public function setDelegateLookupContainer(ContainerInterface $container)
+    {
+        $this->lookupContainer = $container;
     }
 
     public function register(Services $registerer)
@@ -54,12 +61,16 @@ class Container implements ContainerInterface
 
     public function has($name)
     {
-        return isset($this->definitions[$name]) ? true : false;
+        if ($this->lookupContainer === $this) {
+            return isset($this->definitions[$name]);
+        } else {
+            return $this->lookupContainer->has($name);
+        }
     }
 
     protected function hasAndReturn($name)
     {
-        return $this->has($name) ? $this->definitions[$name] : false;
+        return $this->has($name) ? $this->getDefinition($name) : false;
     }
 
     public function getDefinition($name)
@@ -77,6 +88,10 @@ class Container implements ContainerInterface
 
     public function get($name)
     {
+        if ($this->lookupContainer !== $this) {
+            return $this->lookupContainer->get($name);
+        }
+
         if (isset($this->instances[$name])) {
             return $this->instances[$name];
         }
@@ -101,10 +116,10 @@ class Container implements ContainerInterface
         throw new NotFound($name . ' is not defined');
     }
 
-    public function getExecutableFromCallable($handlerName, $handler, $args)
+    public function getExecutableFromCallable($handlerName, callable $handler, $args)
     {
         if (is_array($handler)) {
-            // resolve the controller parameters
+            // resolve the object parameters
             $instance = $handler[0];
             $method = $handler[1];
             $params = $this->resolver->getMethodArgs($handlerName, $handler[0], $handler[1]);
