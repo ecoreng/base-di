@@ -59,7 +59,7 @@ $obj2 = $this->get('Some\Object');
 // $obj1 and $obj2 contain different instances
 ```
 
-Interfaces are the suggested alias/implementation for classes, as these will help autoresolve (more on this later) your parameter dependencies to Interfaces, but actually anything will work:
+Interfaces are the suggested alias for classes, as these will help autoresolve your parameter dependencies to Interfaces (more on this later), but actually anything will work:
 ```php
 $di = new \Base\Concrete\Container;
 $di->set('somestring-not-a-class-or-interface', 'Some\Object');
@@ -87,7 +87,7 @@ $obj2 = $di->get('Some\Object');
 
 // $obj1 and $obj2 reference different instances
 ```
-OR
+OR use this syntax
 ```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object')->setSingleton(false);
@@ -108,7 +108,7 @@ $obj = $this->get('Some\Interface');
 // $obj will contain an instance of Some\Object2
 ```
 
-You can delegate the instantiation of the implementation to a Closure for complex instantiation logic
+You can delegate the instantiation of the implementation (object) to a Closure for complex instantiation logic
 ```php
 $di = new \Base\Concrete\Container;
 $di->set('Some\Object', function () {
@@ -150,7 +150,7 @@ $obj = $di->get('Some\Object');
 Container Definitions can also be reused, just create an object that implements ``Base\ServiceRegisterer``
 ```php
 // ServiceRegisterer.php
-class ServiceRegisterer
+class ServiceRegisterer implements \Base\ServiceRegisterer
 {
 	public function register(Interop\Container\ContainerInterface $di)
   {
@@ -235,7 +235,7 @@ $has2 = $di->has('Some\Object');
 // $has2 equals true
 ```
 
-If a non-existing definition is requested, ``Base\Exception\DependencyNotFoundException`` is thrown (``Base\Exception\DependencyNotFoundException`` extends ``Interop\Container\Exception\NotFoundException``)
+If a non-existing definition is requested, ``Base\Exception\DependencyNotFoundException`` (which extends ``Interop\Container\Exception\NotFoundException``) is thrown 
 ```php
 $di = new \Base\Concrete\Container;
 $obj = $di->get('Some\Object2');
@@ -243,7 +243,7 @@ $obj = $di->get('Some\Object2');
 // Base\Exception\DependencyNotFoundException is thrown
 ```
 
-You can define a delegate lookup container, which will be used to get dependencies instead of this container, as long as it implements the Container Interoperability interface
+You can define a delegate lookup container, which will be used to get dependencies instead of the current container, as long as it implements the Container Interoperability interface
 
 ```php
 $di = new \Base\Concrete\Container;
@@ -271,7 +271,7 @@ $obj1 = $di->get('\Some\Object');
 // $obj1 will contain an instance of \Some\Object
 ```
 
-The container will try to autoresolve all dependencies that your object has as long as they're typehinted, exist and are autoloadable. This is done through Reflections, and the resulting relevant reflection information saved in memory (or cached)
+The container tries to autoresolve all dependencies that your object has as long as they're typehinted, exist and are autoloadable. This is done through Reflections, and the resulting relevant reflection information saved in memory (or cached, see below)
 ```php
 //Dependency1.php
 
@@ -369,7 +369,7 @@ $obj1 = $di->setArgs(['dep2' => '@Dependency2'])->get('Dependency1');
 
 ##Caching Reflection Data###
 
-By default, the container saves in memory the data it gets from Reflections, but it's also possible to cache this information by passing a preset ``Base\Interfaces\DiResolver`` object with a caching ``Base\Interfaces\DiPoolStorage`` object, currently an APC pool storage is provided.
+By default, the container saves in memory the data it gets from Reflections, but it's also possible to cache this information by passing a preset ``Base\Interfaces\DiResolver`` object with a caching ``Base\Interfaces\DiPoolStorage`` object, currently an APC pool storage is available.
 ```php
 $resolver = new \Base\Concrete\Di\Resolver(new \Base\Concrete\Di\ApcPoolStorage);
 $di = new Base\Concrete\Container($resolver);
@@ -390,7 +390,7 @@ interface DiPoolStorage
 ```
 
 ##Black Magic##
-Callables can also be autoresolved and returned as a callable for later execution:
+Callables can also be autoresolved and returned as a Closure for later execution:
 ```php
 // assuming \Some\Object and \Some\Object2 exist and are autoloadable
 $di = new \Base\Concrete\Container;
@@ -409,7 +409,7 @@ $returnArray = $exec();
 // third element contains an instance of \Some\Object2 (autoresolved)
 ```
 
-Or you can pass an associative array where the order of the params don't matter
+Or you can pass an associative array where the order of the params doesn't matter
 ```php
 // assuming \Some\Object and \Some\Object2 exist and are autoloadable
 $di = new \Base\Concrete\Container;
@@ -428,7 +428,7 @@ $returnArray = $exec();
 // third element contains an instance of \Some\Object2
 ```
 
-Manually prepare an instantiated Object as another definition (Manual Setter Injection as Interface). This is useful feature for when you want to free people from unnecesary inheritance but still have a way to prepare an object properly.
+Manually prepare an instantiated Object as another definition (Manual Setter Injection as Interface). This is a useful feature when you want to free people from unnecesary inheritance but still have a way to prepare an object properly.
 
 ```php
 // ControllerInterface.php
