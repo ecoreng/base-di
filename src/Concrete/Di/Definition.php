@@ -71,7 +71,7 @@ class Definition implements \Base\Interfaces\DiDefinition
         return $this;
     }
 
-    public function withSetter($setter, array $arguments)
+    public function withSetter($setter, array $arguments = [])
     {
         if (!isset($this->definition['setters'][$setter])) {
             $callNo = 0;

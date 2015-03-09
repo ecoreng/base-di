@@ -224,7 +224,27 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
     
     public function testSettersAutoresolution()
     {
-        // same as above with autoresolution
+        $to = 'Base\Test\Objects\TestObjectSettersObjParam';
+        $this->di->set('Some\Interface', $to)
+                ->withSetter('setSt1');
+        
+        $obj = $this->di->get('Some\Interface');
+        $this->assertInstanceOf($to, $obj);
+        $this->assertInstanceOf('Base\Test\Objects\TestNonDefinedObject', $obj->getSt1());
+    }
+    
+    public function testSettersWithReferenceNotSingleton()
+    {
+        $this->di->getDefinition($this->testObject)->setSingleton(false);
+        $to = 'Base\Test\Objects\TestObjectSettersReference';
+        $this->di->set('Some\Interface', $to)
+            ->withSetter('setSt1', ['@' . $this->testObject])
+            ->setSingleton(false);
+        
+        $obj1 = $this->di->get('Some\Interface')->getSt1();
+        $obj2 = $this->di->get('Some\Interface')->getSt1();
+        
+        $this->assertNotSame($obj1, $obj2);
     }
 
     public function testSettersUnorderedParams()
@@ -316,10 +336,30 @@ class ContainerTest extends \PHPUnit_Framework_TestCase
         $to = 'Base\Test\Objects\TestObjectSetters';
         $this->di->set('Some\Interface', $to)
                 ->withSetter('setIds', ['id2' => 26, 'id' => 1001]);
+        
         $toInstance = new $to;
+        
         $this->di->setterInjectAs('Some\Interface', $toInstance);
         $this->assertEquals(26, $toInstance->getId2());
         $this->assertEquals(1001, $toInstance->getId());
+        
+        // change definition
+        $this->di->set('Some\Interface', $to)
+            ->withSetter('setIds', ['id2' => 260, 'id' => '@' . $this->testObject]);
+        
+        $this->di->getDefinition($this->testObject)->setSingleton(false);
+        
+        // reinject same object
+        $this->di->setterInjectAs('Some\Interface', $toInstance);
+        $this->assertEquals(260, $toInstance->getId2());
+        $toParam = $toInstance->getId();
+        $this->assertInstanceOf($this->testObject, $toParam);
+        
+        // reinject again, we expect a different object than the previous injection
+        $this->di->setterInjectAs('Some\Interface', $toInstance);
+        $toParam2 = $toInstance->getId();
+        
+        $this->assertNotSame($toParam, $toParam2);
     }
 
     public function testGetWithParameters()
