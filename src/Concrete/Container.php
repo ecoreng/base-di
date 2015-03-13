@@ -16,18 +16,19 @@ class Container implements ContainerInterface
     protected $definitions = [];
     protected $instances = [];
     protected $ignore = ['array', 'callable'];
-    protected $tempArgs = [];
     protected $lookupContainer;
+    protected $chain = [];
 
     public function __construct(ResolverInterface $resolver = null)
     {
-        $this->resolver = $resolver === null ? new Resolver : $resolver;
+        $this->resolver = $resolver !== null ?: new Resolver($this);
         $this->lookupContainer = $this;
     }
 
     public function setDelegateLookupContainer(ContainerInterface $container)
     {
         $this->lookupContainer = $container;
+        $this->resolver->setContainer($container);
     }
 
     public function register(Services $registerer)
@@ -68,7 +69,7 @@ class Container implements ContainerInterface
         }
     }
 
-    protected function hasAndReturn($name)
+    public function hasAndReturn($name)
     {
         return $this->has($name) ? $this->getDefinition($name) : false;
     }
@@ -82,7 +83,7 @@ class Container implements ContainerInterface
 
     public function setArgs(array $args)
     {
-        $this->tempArgs = $args;
+        $this->resolver->setArgs($args);
         return $this;
     }
 
@@ -91,14 +92,18 @@ class Container implements ContainerInterface
         if ($this->lookupContainer !== $this) {
             return $this->lookupContainer->get($name);
         }
-
+        
+        if ($this->checkChain($name)) {
+            throw new \Exception('Recursive dependencies');
+        }
+        $this->pushChain($name);
         if (isset($this->instances[$name])) {
+            $this->popChain();
             return $this->instances[$name];
         }
         $entry = $this->hasAndReturn($name);
         if ($entry) {
             $instance = $this->resolve($entry);
-
             if ($entry->isSingleton() && !isset($this->instances[$name])) {
                 $this->instances[$name] = $instance;
 
@@ -107,84 +112,26 @@ class Container implements ContainerInterface
                     $this->instances[$implementation] = $instance;
                 }
             }
+            $this->popChain();
             return $instance;
         }
         if (class_exists($name)) {
             $this->set($name);
+            $this->popChain();
             return $this->get($name);
         }
+        $this->popChain();
         throw new NotFound($name . ' is not defined');
     }
 
     public function getExecutableFromCallable($handlerName, callable $handler, $args)
     {
-        if (is_array($handler)) {
-            // resolve the object parameters
-            $instance = $handler[0];
-            $method = $handler[1];
-            $params = $this->resolver->getMethodArgs($handlerName, $handler[0], $handler[1]);
-            $ref = $this->resolver->getReflectionMethod($instance, $method);
-            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
-            return function() use ($ref, $instance, $argsReady) {
-                return $ref->invokeArgs($instance, $argsReady);
-            };
-        } else {
-            // resolve the closure / function parameters
-            $params = $this->resolver->getFunctionArgs($handler, $handlerName);
-            $ref = $this->resolver->getReflectionFunction($handler, $handlerName);
-            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
-            return function() use ($ref, $argsReady) {
-                return $ref->invokeArgs($argsReady);
-            };
-        }
+        return $this->resolver->getExecutableFromCallable($handlerName, $handler, $args);
     }
 
     public function setterInjectAs($alias, $instance)
     {
-        $entry = $this->hasAndReturn($alias);
-        $implementation = $entry->getImplementation();
-        if ($entry) {
-            // prepare
-            $setters = $entry->getSetters();
-            if (count($setters) > 0) {
-                foreach ($setters as $setter => $calls) {
-                    foreach ($calls as $params) {
-                        $strArgs = $this->resolver->getMethodArgs($entry->getAlias(), $instance, $setter);
-                        $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
-                        $name = $entry->getAlias();
-                        $key = $name . ':' . $setter;
-                        $r = $this->resolver->getReflectionMethod($implementation, $key);
-                        $r->invokeArgs($instance, $strArgs);
-                    }
-                }
-            }
-        }
-    }
-
-    protected function tempArgs()
-    {
-        $args = $this->tempArgs;
-        $this->tempArgs = [];
-        return $args;
-    }
-
-    protected function mergeArgs($resolved, $passed)
-    {
-        $numeric = false;
-        $merged = [];
-        if (is_numeric(key($passed))) {
-            foreach ($passed as $key => $arg) {
-                $argRes = each($resolved);
-                if ($arg === null) {
-                    $merged[$argRes['key']] = $argRes['value'];
-                    continue;
-                }
-                $merged[$argRes['key']] = $arg;
-                unset($passed[$key]);
-            }
-        }
-        $merged = array_merge($resolved, $merged, $passed);
-        return $merged;
+        $this->resolver->setterInjectAs($alias, $instance);
     }
 
     protected function resolve(Di\Definition $entry)
@@ -197,9 +144,8 @@ class Container implements ContainerInterface
                     return $this->resolve($impEntry);
                 }
             }
-
             if (class_exists($implementation)) {
-                return $this->instantiateProperly($entry);
+                return $this->resolver->instantiate($entry);
             }
         }
         if (is_object($implementation) && !($implementation instanceof \Closure)) {
@@ -216,67 +162,19 @@ class Container implements ContainerInterface
         }
         throw new ContainerException($implementation . ' is unresolvable @ ' . $entry->getAlias());
     }
-
-    protected function instantiateProperly(Di\Definition $entry)
+    
+    protected function popChain()
     {
-        // get params from resolver
-        $ctorArgs = $this->resolver->getConstructorArgs($entry);
-
-        // instantiate
-        $implementation = $entry->getImplementation();
-        if (count($ctorArgs) === 0) {
-            $instance = new $implementation;
-        } else {
-            $ctorArgs = $this->prepareArgs(array_merge($ctorArgs, $entry->getArguments(), $this->tempArgs()));
-            $r = $this->resolver->getReflectionClass($implementation);
-            $instance = $r->newInstanceArgs($ctorArgs);
-        }
-
-        $this->setterInjectAs($entry->getAlias(), $instance);
-
-        // return
-        return $instance;
+        array_pop($this->chain);
     }
-
-    protected function prepareArgs(array $arguments)
+    
+    protected function pushChain($element)
     {
-        $ret = [];
-        foreach ($arguments as $name => $argument) {
-
-            // argument was not defined but looks like it's typehinted
-            if (is_array($argument) && (array_key_exists('argDefault', $argument) || array_key_exists('argClass', $argument))) {
-                if (isset($argument['argClass'])) {
-                    // is typehinted
-                    if ($argument['argClass'] !== null) {
-
-                        // create a chain where we can check if this is cyclic =========================================
-                        $ret[$name] = $this->get($argument['argClass']);
-
-                        if (isset($argument['argDefault']) && $ret[$name] === null) {
-                            $ret[$name] = $argument['argDefault'];
-                        }
-                    }
-                } else {
-                    $ret[$name] = $argument['argDefault'];
-                }
-                // argument is a string
-            } elseif (is_string($argument)) {
-
-                // argument is a reference to another object
-                if (substr($argument, 0, 1) === '@') {
-                    $alias = substr($argument, 1);
-                    $ret[$name] = $this->get($alias);
-                    // argument is actually a regular string
-                } else {
-                    $ret[$name] = $argument;
-                }
-
-                // argument is something else, better leave it alone
-            } else {
-                $ret[$name] = $argument;
-            }
-        }
-        return $ret;
+        $this->chain[] = $element;
     }
-
+    
+    protected function checkChain($element)
+    {
+        return in_array($element, $this->chain);
+    }
 }

@@ -3,22 +3,29 @@
 namespace Base\Concrete\Di;
 
 use Base\Interfaces\DiPoolStorage as PoolStorage;
+use Interop\Container\ContainerInterface;
+use Base\Concrete\Di\ArrayPoolStorage;
+use Base\Interfaces\DiDefinition as Definition;
 
 class Resolver implements \Base\Interfaces\DiResolver
 {
 
     protected $definitions = [];
     protected $storage = null;
+    protected $container = null;
+    protected $tempArgs = [];
 
-    public function __construct(PoolStorage $storage = null)
+    public function __construct(ContainerInterface $container, PoolStorage $storage = null)
     {
-        if ($storage !== null) {
-            $this->storage = $storage;
-        } else {
-            $this->storage = new \Base\Concrete\Di\ArrayPoolStorage;
-        }
+        $this->storage = $storage ?: new ArrayPoolStorage;
+        $this->container = $container;
     }
 
+    public function setContainer(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+    
     public function getReflectionClass($name)
     {
         $ref = $this->getData('reflectionClass', $name);
@@ -39,7 +46,7 @@ class Resolver implements \Base\Interfaces\DiResolver
         return $rFunc;
     }
 
-    public function getReflectionMethod($instance, $method)
+    public function getReflectionMethod($object, $method)
     {
         $ref = $this->getData('reflectionMethod', $method);
         if ($ref !== null) {
@@ -47,11 +54,11 @@ class Resolver implements \Base\Interfaces\DiResolver
         }
         $key = $method;
         $method = explode(':', $method);
-        $this->definitions[$key]['reflectionMethod'] = $rSetter = new \ReflectionMethod($instance, end($method));
+        $this->definitions[$key]['reflectionMethod'] = $rSetter = new \ReflectionMethod($object, end($method));
         return $rSetter;
     }
 
-    public function getConstructorArgs(\Base\Concrete\Di\Definition $entry)
+    public function getConstructorArgs(Definition $entry)
     {
         $ret = [];
         $name = $entry->getAlias();
@@ -67,7 +74,7 @@ class Resolver implements \Base\Interfaces\DiResolver
         return $ret;
     }
 
-    public function getMethodArgs($alias, $instance, $method)
+    public function getMethodArgs($alias, $object, $method)
     {
         $ret = [];
         $key = $alias . ':' . $method;
@@ -75,7 +82,7 @@ class Resolver implements \Base\Interfaces\DiResolver
         if ($args !== null) {
             return $args;
         }
-        $rSetter = $this->getReflectionMethod($instance, $key);
+        $rSetter = $this->getReflectionMethod($object, $key);
         $ret = $this->getArgsFromReflection($rSetter);
         $this->storage->set($alias, 'methodArguments', $ret);
         return $ret;
@@ -93,7 +100,120 @@ class Resolver implements \Base\Interfaces\DiResolver
         $this->storage->set($key, 'functionArguments', $ret);
         return $ret;
     }
+    
+    public function getExecutableFromCallable($handlerName, callable $handler, $args)
+    {
+        if (is_array($handler)) {
+            // resolve the object parameters
+            $instance = $handler[0];
+            $method = $handler[1];
+            $params = $this->getMethodArgs($handlerName, $handler[0], $handler[1]);
+            $ref = $this->getReflectionMethod($instance, $method);
+            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
+            return function() use ($ref, $instance, $argsReady) {
+                return $ref->invokeArgs($instance, $argsReady);
+            };
+        } else {
+            // resolve the closure / function parameters
+            $params = $this->getFunctionArgs($handler, $handlerName);
+            $ref = $this->getReflectionFunction($handler, $handlerName);
+            $argsReady = $this->prepareArgs($this->mergeArgs($params, $args));
+            return function() use ($ref, $argsReady) {
+                return $ref->invokeArgs($argsReady);
+            };
+        }
+    }
+    
+    public function setterInjectAs($alias, $instance)
+    {
+        if ($entry = $this->container->hasAndReturn($alias)) {
+            // prepare
+            $setters = $entry->getSetters();
+            if (count($setters) > 0) {
+                foreach ($setters as $setter => $calls) {
+                    foreach ($calls as $params) {
+                        $strArgs = $this->getMethodArgs($entry->getAlias(), $instance, $setter);
+                        $strArgs = $this->prepareArgs(array_merge($strArgs, $params));
+                        $name = $entry->getAlias();
+                        $key = $name . ':' . $setter;
+                        $r = $this->getReflectionMethod($entry->getImplementation(), $key);
+                        $r->invokeArgs($instance, $strArgs);
+                    }
+                }
+            }
+        }
+    }
 
+    public function setArgs(array $args)
+    {
+        $this->tempArgs = $args;
+        return $this;
+    }
+
+    protected function tempArgs()
+    {
+        $args = $this->tempArgs;
+        $this->tempArgs = [];
+        return $args;
+    }
+
+    protected function prepareArgs(array $arguments)
+    {
+        $ret = [];
+        foreach ($arguments as $name => $argument) {
+            // argument was not defined but looks like it's typehinted
+            if (is_array($argument) && (array_key_exists('argDefault', $argument) || array_key_exists('argClass', $argument))) {
+                if (isset($argument['argClass'])) {
+                    // is typehinted
+                    if ($argument['argClass'] !== null) {
+                        $ret[$name] = $this->container->get($argument['argClass']);
+                        if (isset($argument['argDefault']) && $ret[$name] === null) {
+                            $ret[$name] = $argument['argDefault'];
+                        }
+                    }
+                } else {
+                    $ret[$name] = $argument['argDefault'];
+                }
+                // argument is a string
+            } elseif (is_string($argument)) {
+
+                // argument is a reference to another object
+                if (substr($argument, 0, 1) === '@') {
+                    $alias = substr($argument, 1);
+                    $ret[$name] = $this->container->get($alias);
+                    // argument is actually a regular string
+                } else {
+                    $ret[$name] = $argument;
+                }
+
+                // argument is something else, better leave it alone
+            } else {
+                $ret[$name] = $argument;
+            }
+        }
+        return $ret;
+    }
+
+    public function instantiate(Definition $entry)
+    {
+        // get params
+        $ctorArgs = $this->getConstructorArgs($entry);
+
+        // instantiate
+        $implementation = $entry->getImplementation();
+        if (count($ctorArgs) === 0) {
+            $instance = new $implementation;
+        } else {
+            $ctorArgs = $this->prepareArgs(array_merge($ctorArgs, $entry->getArguments(), $this->tempArgs()));
+            $r = $this->getReflectionClass($implementation);
+            $instance = $r->newInstanceArgs($ctorArgs);
+        }
+
+        $this->setterInjectAs($entry->getAlias(), $instance);
+
+        // return
+        return $instance;
+    }
     protected function getArgsFromReflection($method)
     {
         $ret = [];
@@ -117,4 +237,22 @@ class Resolver implements \Base\Interfaces\DiResolver
         }
     }
 
+    protected function mergeArgs($resolved, $passed)
+    {
+        $numeric = false;
+        $merged = [];
+        if (is_numeric(key($passed))) {
+            foreach ($passed as $key => $arg) {
+                $argRes = each($resolved);
+                if ($arg === null) {
+                    $merged[$argRes['key']] = $argRes['value'];
+                    continue;
+                }
+                $merged[$argRes['key']] = $arg;
+                unset($passed[$key]);
+            }
+        }
+        $merged = array_merge($resolved, $merged, $passed);
+        return $merged;
+    }
 }

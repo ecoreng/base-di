@@ -10,7 +10,8 @@ class ResolverTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->resolver = new \Base\Concrete\Di\Resolver;
+        $container = new \Base\Concrete\Container;
+        $this->resolver = new \Base\Concrete\Di\Resolver($container);
     }
 
     public function testGetReflectionClass()
