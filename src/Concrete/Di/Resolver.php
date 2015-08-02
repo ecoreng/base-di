@@ -15,7 +15,7 @@ class Resolver implements \Base\Interfaces\DiResolver
     protected $container = null;
     protected $tempArgs = [];
 
-    public function __construct(ContainerInterface $container, PoolStorage $storage = null)
+    public function __construct(ContainerInterface $container = null, PoolStorage $storage = null)
     {
         $this->storage = $storage ?: new ArrayPoolStorage;
         $this->container = $container;
